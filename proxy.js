@@ -68,29 +68,40 @@ var server = http.createServer(function(req, res) {
 
     var output = [];
     var parsed = JSON.parse(data);
-    parsed.forEach(function(x) {
-      var name = x.host + '.' + x.plugin;
-      if (x.plugin_instance !== '') {
-        name = name + '.' + x.plugin_instance;
+    parsed.forEach(function(dataElement) {
+      // start series name with first part of hostname
+      var hostname = dataElement.host.split(".")[0]
+
+      // then append plugin name (like "cpu" or "memory")
+      var metricPrefix = 'collectd.' + dataElement.plugin;
+
+      // and then apply plugin's internal names
+      if (dataElement.plugin_instance !== '') {
+        metricPrefix = metricPrefix + '.' + dataElement.plugin_instance;
       }
-      name = name + '.' + x.type;
-      if (x.type_instance !== '') {
-        name = name + '.' + x.type_instance;
+      metricPrefix = metricPrefix + '.' + dataElement.type;
+      if (dataElement.type_instance !== '') {
+        metricPrefix = metricPrefix + '.' + dataElement.type_instance;
       }
-      for(var z in x.dstypes) {
-        if (x.dstypes[z] == 'counter' || x.dstypes[z] == 'gauge') {
-          var n = name + '.' + x.dsnames[z];
+
+      // for each dstype add separate metric
+      for(var dstype in dataElement.dstypes) {
+        var isCounterOrGauge = dataElement.dstypes[dstype] == 'counter' || dataElement.dstypes[dstype] == 'gauge'
+        if (isCounterOrGauge) {
+          var metricName = metricPrefix + '.' + dataElement.dsnames[dstype];
           if (argv.verbose) {
-            console.log('Push metric', n);
+            console.log('Push metric', metricName);
           }
+          var value = dataElement.values[dstype]
           output.push({
-            name: n,
-            columns: ['time', 'value'],
-            points: [[x.time, x.values[z]]],
+            name: metricName,
+            columns: ['time', 'value', 'hostname'],
+            points: [[dataElement.time, value, hostname]],
           });
         }
       }
     });
+
     var forwarded_req = {
       hostname: argv.influxdb_host,
       port: argv.influxdb_port,
@@ -114,4 +125,3 @@ var server = http.createServer(function(req, res) {
 server.listen(argv.proxy_http_port, argv.proxy_http_address);
 
 console.log('Proxy started on port', argv.proxy_http_port, 'ip', argv.proxy_http_address);
-
