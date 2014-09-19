@@ -5,6 +5,7 @@ var http = require('http'),
 function usage() {
   console.log('node proxy.js [options]');
   console.log('options :');
+  console.log('  --precision : time precision, default value ms');
   console.log('  --proxy_http_port port : proxy http port, default value 8079');
   console.log('  --proxy_http_address address : proxy http address, default value 0.0.0.0');
   console.log('  --influxdb_host : influxdb host, default value localhost');
@@ -20,6 +21,10 @@ function usage() {
 
 if (argv.help) {
   usage();
+}
+
+if (!argv.precision) {
+  argv.precision = 'ms';
 }
 
 if (!argv.proxy_http_port) {
@@ -59,7 +64,7 @@ var collectdPluginEnabled = function(plugin) {
   return argumentMissing || pluginEnabled
 }
 
-argv.influxdb_path = '/db/' + argv.influxdb_db + '/series?u=' + argv.influxdb_user + '&p=' + argv.influxdb_password + '&time_precision=s';
+argv.influxdb_path = '/db/' + argv.influxdb_db + '/series?u=' + argv.influxdb_user + '&p=' + argv.influxdb_password + '&time_precision='+argv.precision;
 console.log('Influx db config');
 console.log('Host :', argv.influxdb_host, ':', argv.influxdb_port);
 console.log('Path :', argv.influxdb_path);
